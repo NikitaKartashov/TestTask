@@ -8,9 +8,12 @@ schedule.scheduleJob('0 * * * *', async () => {
     await main()
 })
 
-async function getOrdersResponse() {
+async function getOrdersResponse(hours = 1) {
+    const now = new Date()
+    const oneHourAgo = new Date()
+    oneHourAgo.setHours(now.getHours() - hours);
     const ordersResponse = await axios.get(
-        'https://app.orderdesk.me/api/v2/orders',
+        `https://app.orderdesk.me/api/v2/orders?search_start_date=${oneHourAgo.toUTCString()}&search_end_date=${now.toUTCString()}`,
         {
             headers: { 'ORDERDESK-STORE-ID': process.env.ORDERDESK_STORE_ID , 'ORDERDESK-API-KEY': process.env.ORDERDESK_API_KEY }
         }
@@ -22,16 +25,9 @@ async function getOrdersResponse() {
 
 function mapToOrders(ordersResponse) {
     const ordersIdAndAddress = ordersResponse.map(item => {
-      return { id: item.id, shippingAddress: item.shipping.address1, dateAdded: new Date(item.date_added + ' UTC') }
+      return { id: item.id, shippingAddress: item.shipping.address1 }
     });
     return ordersIdAndAddress;
-}
-
-function filterOrdersByTime(orders, hours = 1) {
-    const relevantDate = new Date();
-    relevantDate.setHours(relevantDate.getHours() - hours);
-    const filteredOrders = orders.filter(item => item.dateAdded > relevantDate);
-    return filteredOrders;
 }
 
 function displayOrders(filteredOrders) {
@@ -41,6 +37,5 @@ function displayOrders(filteredOrders) {
 async function main() {
     const ordersResponse = await getOrdersResponse()
     const orders = mapToOrders(ordersResponse)
-    const filteredOrders = filterOrdersByTime(orders)
-    displayOrders(filteredOrders)
+    displayOrders(orders)
 }
